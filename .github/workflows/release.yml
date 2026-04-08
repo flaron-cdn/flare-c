@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y clang-20 lld-20 llvm-20
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 100
+          sudo update-alternatives --install /usr/bin/wasm-ld wasm-ld /usr/bin/wasm-ld-20 100
+          sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar /usr/bin/llvm-ar-20 100
+
+      - name: Test
+        run: make test
+
+      - name: Build SDK
+        run: make build
+
+      - name: Package release
+        run: |
+          mkdir -p dist/flare-c-${{ github.ref_name }}
+          cp -r include/ dist/flare-c-${{ github.ref_name }}/include/
+          cp -r src/ dist/flare-c-${{ github.ref_name }}/src/
+          cp -r examples/ dist/flare-c-${{ github.ref_name }}/examples/
+          cp Makefile LICENSE README.md dist/flare-c-${{ github.ref_name }}/
+          cp build/libflare.a dist/flare-c-${{ github.ref_name }}/
+          tar czf dist/flare-c-${{ github.ref_name }}.tar.gz -C dist flare-c-${{ github.ref_name }}
+          cd dist && sha256sum flare-c-${{ github.ref_name }}.tar.gz > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/flare-c-${{ github.ref_name }}.tar.gz
+            dist/checksums.txt

@@ -1,0 +1,14 @@
+# Build
+*.o
+*.a
+*.so
+*.dylib
+*.wasm
+build/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
