@@ -2,7 +2,12 @@
 #include "flare/runtime.h"
 #include "flare/env.h"
 
-static flare_status_t map_spark_set_error(int32_t code) {
+/* Map a positive sparkErr* code (1-9) to the matching flare_status_t. Used by
+ * both spark_set (where the host returns the code as-is) and spark_pull
+ * (where the host returns the code negated; callers must negate before
+ * calling this function). Code 0 is the spark_set success path; spark_pull
+ * never reaches this function with a 0 input. */
+static flare_status_t map_spark_error_code(int32_t code) {
     switch (code) {
     case 0:  return FLARE_OK;
     case 1:  return FLARE_ERR_SPARK_INVALID_TTL;
@@ -70,7 +75,7 @@ flare_status_t flare_spark_set(const char *key, size_t key_len,
     int32_t code = spark_set(key_handle, (int32_t)key_len,
                              val_handle, (int32_t)value_len,
                              (int32_t)ttl_secs);
-    return map_spark_set_error(code);
+    return map_spark_error_code(code);
 }
 
 void flare_spark_delete(const char *key, size_t key_len) {
@@ -107,10 +112,14 @@ flare_status_t flare_spark_pull(const char *origin_node, size_t origin_len,
     int32_t keys_h   = flare_copy_to_arena(keys_json, keys_json_len);
     if (origin_h == 0 || keys_h == 0) return FLARE_ERR_OUT_OF_MEMORY;
 
+    /* Wire format: non-negative is the count of keys migrated; negative is
+     * the negation of a sparkErr* code (-3 for WriteLimit, -8 for BadKey,
+     * etc.). Negate before mapping so the existing positive-code switch
+     * handles both spark_set and spark_pull. */
     int32_t code = spark_pull(origin_h, (int32_t)origin_len,
                               keys_h, (int32_t)keys_json_len);
     if (code < 0) {
-        return map_spark_set_error(-code);
+        return map_spark_error_code(-code);
     }
     if (out_count) *out_count = (uint32_t)code;
     return FLARE_OK;

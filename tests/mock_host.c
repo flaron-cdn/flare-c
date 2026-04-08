@@ -57,6 +57,8 @@ typedef struct {
 
     mock_kv_entry_t spark[MOCK_MAX_KV];
     int32_t  spark_next_error;
+    int32_t  spark_pull_next_return;
+    int      spark_pull_next_return_set;
 
     mock_kv_entry_t plasma[MOCK_MAX_KV];
     int64_t  plasma_counters[MOCK_MAX_KV];
@@ -216,6 +218,11 @@ int flare_mock_spark_has(const char *key) {
 
 void flare_mock_spark_set_next_error(int32_t code) {
     g_mock.spark_next_error = code;
+}
+
+void flare_mock_spark_pull_set_next_return(int32_t code) {
+    g_mock.spark_pull_next_return = code;
+    g_mock.spark_pull_next_return_set = 1;
 }
 
 void flare_mock_plasma_seed(const char *key, const uint8_t *value, size_t len) {
@@ -583,6 +590,10 @@ int64_t spark_list(void) {
 int32_t spark_pull(int32_t origin_ptr, int32_t origin_len,
                    int32_t keys_ptr, int32_t keys_len) {
     (void)origin_ptr; (void)origin_len; (void)keys_ptr; (void)keys_len;
+    if (g_mock.spark_pull_next_return_set) {
+        g_mock.spark_pull_next_return_set = 0;
+        return g_mock.spark_pull_next_return;
+    }
     return 0;
 }
 

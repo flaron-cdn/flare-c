@@ -92,6 +92,70 @@ FLARE_TEST(spark_list_returns_json_array) {
     FLARE_ASSERT(json[len - 1] == ']');
 }
 
+FLARE_TEST(spark_pull_positive_return_is_count) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(5);
+
+    uint32_t count = 99;
+    const char *keys = "[\"k1\",\"k2\"]";
+    flare_status_t st = flare_spark_pull("node-2", 6, keys, 11, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_OK);
+    FLARE_ASSERT_EQ_INT(count, 5);
+}
+
+FLARE_TEST(spark_pull_zero_is_ok_with_zero_count) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(0);
+
+    uint32_t count = 99;
+    flare_status_t st = flare_spark_pull("node-2", 6, "[\"k\"]", 5, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_OK);
+    FLARE_ASSERT_EQ_INT(count, 0);
+}
+
+FLARE_TEST(spark_pull_negative_three_is_write_limit) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(-3);
+
+    uint32_t count = 99;
+    flare_status_t st = flare_spark_pull("node-2", 6, "[\"k\"]", 5, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_ERR_SPARK_WRITE_LIMIT);
+    FLARE_ASSERT_EQ_INT(count, 0);
+}
+
+FLARE_TEST(spark_pull_negative_eight_is_bad_key) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(-8);
+
+    uint32_t count = 99;
+    flare_status_t st = flare_spark_pull("node-2", 6, "[\"k\"]", 5, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_ERR_SPARK_BAD_KEY);
+}
+
+FLARE_TEST(spark_pull_negative_nine_is_no_capability) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(-9);
+
+    uint32_t count = 99;
+    flare_status_t st = flare_spark_pull("node-2", 6, "[\"k\"]", 5, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_ERR_SPARK_NO_CAPAB);
+}
+
+FLARE_TEST(spark_pull_unknown_negative_is_host_error) {
+    flare_mock_reset();
+    flare_reset_arena();
+    flare_mock_spark_pull_set_next_return(-42);
+
+    uint32_t count = 99;
+    flare_status_t st = flare_spark_pull("node-2", 6, "[\"k\"]", 5, &count);
+    FLARE_ASSERT_EQ_INT(st, FLARE_ERR_HOST);
+}
+
 void register_spark_tests(void) {
     FLARE_RUN(spark_get_returns_value_with_ttl);
     FLARE_RUN(spark_get_strips_ttl_prefix_correctly);
@@ -101,4 +165,10 @@ void register_spark_tests(void) {
     FLARE_RUN(spark_set_propagates_no_capability_error);
     FLARE_RUN(spark_delete_removes_entry);
     FLARE_RUN(spark_list_returns_json_array);
+    FLARE_RUN(spark_pull_positive_return_is_count);
+    FLARE_RUN(spark_pull_zero_is_ok_with_zero_count);
+    FLARE_RUN(spark_pull_negative_three_is_write_limit);
+    FLARE_RUN(spark_pull_negative_eight_is_bad_key);
+    FLARE_RUN(spark_pull_negative_nine_is_no_capability);
+    FLARE_RUN(spark_pull_unknown_negative_is_host_error);
 }

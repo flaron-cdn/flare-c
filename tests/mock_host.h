@@ -41,6 +41,7 @@ const uint8_t     *flare_mock_resp_body(size_t *out_len);
 void flare_mock_spark_seed(const char *key, const uint8_t *value, size_t len, uint32_t ttl);
 int  flare_mock_spark_has(const char *key);
 void flare_mock_spark_set_next_error(int32_t code);
+void flare_mock_spark_pull_set_next_return(int32_t code);
 
 void flare_mock_plasma_seed(const char *key, const uint8_t *value, size_t len);
 int  flare_mock_plasma_has(const char *key);
